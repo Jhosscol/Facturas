@@ -1,0 +1,27 @@
+# --- Visión Computacional ---
+opencv-python
+Pillow
+pdf2image
+
+# --- OCR ---
+pytesseract
+
+# --- NLP ---
+spacy
+python-dateutil
+pandas
+
+# --- Base de Datos ---
+SQLAlchemy
+
+# --- API (Fase 3) ---
+fastapi
+uvicorn[standard]
+python-multipart
+
+# --- Testing ---
+pytest
+
+# --- Generación de Datos de Prueba ---
+Faker
+reportlab
