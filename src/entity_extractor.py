@@ -86,10 +86,17 @@ def extraer_datos(texto: str) -> dict:
     # Si no encontró nombre, usar la primera línea no vacía como nombre
     if not datos["proveedor_nombre"]:
         lineas = [l.strip() for l in texto.split('\n') if l.strip()]
-        for linea in lineas[:5]:
-            # Ignorar líneas que son solo "factura" o muy cortas
-            if len(linea) > 3 and not re.match(r'^factura$', linea, re.IGNORECASE):
-                datos["proveedor_nombre"] = linea[:100]
+        for linea in lineas[:8]:
+            # Ignorar si es la palabra "factura" sola
+            if re.match(r'^factura$', linea, re.IGNORECASE):
+                continue
+            # Limpiar la línea eliminando fechas, números de factura, RUCs, correos, etc.
+            limpia = re.sub(r'(?:FECHA|EMISI[OÓ]N|VENCIMIENTO|N[°ºo*.]?|NRO|N[UÚ]MERO|INVOICE|PEDIDO|R\.?U\.?C\.?|NIF|CIF)[:\s\-]*\d{1,8}[/\-\.]\d{1,2}[/\-\.]\d{2,4}', '', linea, flags=re.IGNORECASE)
+            limpia = re.sub(r'\b\d{1,2}[/\-\.]\d{1,2}[/\-\.]\d{2,4}\b', '', limpia) # Fechas sueltas
+            limpia = re.sub(r'(?:FACTURA|INVOICE|PEDIDO|N[°ºo*.]?|NRO)[:\s\-]*[A-Za-z0-9\-]+', '', limpia, flags=re.IGNORECASE) # Número de factura
+            limpia = limpia.strip(" -:,*°ºo")
+            if len(limpia) > 3:
+                datos["proveedor_nombre"] = limpia[:100]
                 break
 
     # ── Montos: extraer todos los números con formato monetario ──
@@ -98,7 +105,20 @@ def extraer_datos(texto: str) -> dict:
         m = re.search(patron, texto_buscar, re.IGNORECASE)
         if m:
             try:
-                valor = m.group(1).replace(',', '.').replace(' ', '')
+                valor = m.group(1).replace(' ', '')
+                # Si hay tanto comas como puntos, ej. "1,250.00", removemos las comas
+                if ',' in valor and '.' in valor:
+                    if valor.find(',') < valor.find('.'):
+                        valor = valor.replace(',', '')
+                    else:
+                        valor = valor.replace('.', '').replace(',', '.')
+                elif ',' in valor:
+                    # Si solo tiene comas, ej. "199,65", la coma es el decimal
+                    parts = valor.split(',')
+                    if len(parts) == 2 and len(parts[1]) in (1, 2):
+                        valor = valor.replace(',', '.')
+                    else:
+                        valor = valor.replace(',', '')
                 return float(valor)
             except (ValueError, IndexError):
                 pass
@@ -106,9 +126,9 @@ def extraer_datos(texto: str) -> dict:
 
     # ── Total ──
     patrones_total = [
-        r'TOTAL\s*(?:GENERAL|A\s+PAGAR|FACTURA)?\s*[:\-]?\s*\$?\s*S?/?\s*([\d]+[.,]\d{2})',
-        r'TOTAL\s*[:\-]?\s*\$?\s*S?/?\s*([\d]+[.,]\d{2})',
-        r'IMPORTE\s*TOTAL\s*[:\-]?\s*\$?\s*S?/?\s*([\d]+[.,]\d{2})',
+        r'\b(?<!SUB)TOTAL\s*(?:GENERAL|A\s+PAGAR|FACTURA)?\s*[:\-]?\s*[\$€S]?[/.]?\s*([\d]+(?:[.,]\d{1,2})?)',
+        r'\b(?<!SUB)TOTAL\s*[:\-]?\s*[\$€S]?[/.]?\s*([\d]+(?:[.,]\d{1,2})?)',
+        r'IMPORTE\s*TOTAL\s*[:\-]?\s*[\$€S]?[/.]?\s*([\d]+(?:[.,]\d{1,2})?)',
     ]
     for pat in patrones_total:
         val = extraer_monto(pat, texto)
@@ -116,14 +136,23 @@ def extraer_datos(texto: str) -> dict:
             datos["total"] = val
             break
 
-    # Si no encontró TOTAL con patrón, buscar la última ocurrencia de un número grande
+    # Si no encontró TOTAL con patrón, buscar la última ocurrencia de un número grande con decimales
     if datos["total"] is None:
-        # Buscar todos los montos en el texto
-        montos = re.findall(r'([\d]+[.,]\d{2})', texto)
+        # Buscar todos los montos en el texto (requiriendo separador decimal para no capturar RUCs/números telefónicos)
+        montos = re.findall(r'([\d]+[.,]\d{1,2})', texto)
         if montos:
             try:
-                # El total suele ser el monto más grande o el último
-                valores = [float(m.replace(',', '.')) for m in montos]
+                valores = []
+                for m in montos:
+                    # Formatear el monto candidato
+                    val_str = m
+                    if ',' in val_str:
+                        parts = val_str.split(',')
+                        if len(parts) == 2 and len(parts[1]) in (1, 2):
+                            val_str = val_str.replace(',', '.')
+                        else:
+                            val_str = val_str.replace(',', '')
+                    valores.append(float(val_str))
                 if valores:
                     datos["total"] = max(valores)
             except ValueError:
@@ -131,10 +160,10 @@ def extraer_datos(texto: str) -> dict:
 
     # ── Subtotal ──
     patrones_subtotal = [
-        r'SUB\s*TOTAL\s*[:\-]?\s*\$?\s*S?/?\s*([\d]+[.,]\d{2})',
-        r'SUBTOTAL\s*[:\-]?\s*\$?\s*S?/?\s*([\d]+[.,]\d{2})',
-        r'BASE\s*IMPONIBLE\s*[:\-]?\s*\$?\s*S?/?\s*([\d]+[.,]\d{2})',
-        r'VALOR\s*(?:DE\s+)?VENTA\s*[:\-]?\s*\$?\s*S?/?\s*([\d]+[.,]\d{2})',
+        r'SUB\s*TOTAL\s*[:\-]?\s*[\$€S]?[/.]?\s*([\d]+(?:[.,]\d{1,2})?)',
+        r'SUBTOTAL\s*[:\-]?\s*[\$€S]?[/.]?\s*([\d]+(?:[.,]\d{1,2})?)',
+        r'BASE\s*IMPONIBLE\s*[:\-]?\s*[\$€S]?[/.]?\s*([\d]+(?:[.,]\d{1,2})?)',
+        r'VALOR\s*(?:DE\s+)?VENTA\s*[:\-]?\s*[\$€S]?[/.]?\s*([\d]+(?:[.,]\d{1,2})?)',
     ]
     for pat in patrones_subtotal:
         val = extraer_monto(pat, texto)
@@ -144,10 +173,10 @@ def extraer_datos(texto: str) -> dict:
 
     # ── IGV / IVA ──
     patrones_igv = [
-        r'I\.?G\.?V\.?\s*(?:\(?\d+%?\)?)?\s*[:\-]?\s*\$?\s*S?/?\s*([\d]+[.,]\d{2})',
-        r'I\.?V\.?A\.?\s*(?:\(?\d+%?\)?)?\s*[:\-]?\s*\$?\s*S?/?\s*([\d]+[.,]\d{2})',
-        r'IMPUESTO\s*[:\-]?\s*\$?\s*S?/?\s*([\d]+[.,]\d{2})',
-        r'(?:VA|IVA)\s+\d+\s*[.,]?\s*\d*\s*%\s*[:\-]?\s*\$?\s*S?/?\s*([\d]+[.,]\d{2})',
+        r'I\.?G\.?V\.?\s*(?:\(?\d+%?\)?)?\s*[:\-]?\s*[\$€S]?[/.]?\s*([\d]+(?:[.,]\d{1,2})?)',
+        r'I\.?V\.?A\.?\s*(?:\(?\d+%?\)?)?\s*[:\-]?\s*[\$€S]?[/.]?\s*([\d]+(?:[.,]\d{1,2})?)',
+        r'IMPUESTO\s*[:\-]?\s*[\$€S]?[/.]?\s*([\d]+(?:[.,]\d{1,2})?)',
+        r'(?:VA|IVA)\s+\d+\s*[.,]?\s*\d*\s*%\s*[:\-]?\s*[\$€S]?[/.]?\s*([\d]+(?:[.,]\d{1,2})?)',
     ]
     for pat in patrones_igv:
         val = extraer_monto(pat, texto)
@@ -162,3 +191,4 @@ def extraer_datos(texto: str) -> dict:
         datos["igv"] = round(datos["total"] - datos["subtotal"], 2)
 
     return datos
+

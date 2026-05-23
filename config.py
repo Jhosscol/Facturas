@@ -14,7 +14,7 @@ load_dotenv(os.path.join(os.path.dirname(os.path.abspath(__file__)), ".env"))
 # ============================================================
 # API Keys
 # ============================================================
-GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
+GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "AIzaSyCSHtlIZ5KkTLMwPh7f4vOvfSahuTB8pL4")
 
 # ============================================================
 # Rutas del Proyecto
