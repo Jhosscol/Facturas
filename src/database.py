@@ -22,7 +22,11 @@ class Factura(Base):
     igv = Column(Float, nullable=True)
     total = Column(Float, nullable=True)
     confianza_ocr = Column(Float, nullable=True)
+    moneda = Column(String, default="SOLES")
+    simbolo_moneda = Column(String, default="S/.")
     archivo_origen = Column(String, unique=True, index=True)
+    url_imagen = Column(String, nullable=True)
+    coordenadas_json = Column(Text, nullable=True)
     texto_crudo = Column(Text, nullable=True)
     es_valido = Column(Boolean, default=False)
     estado = Column(String, default="ERROR_OCR")
@@ -61,6 +65,13 @@ def guardar_factura_db(datos: dict) -> Factura:
         factura.igv = datos.get("igv")
         factura.total = datos.get("total")
         factura.confianza_ocr = datos.get("confianza_ocr")
+        factura.moneda = datos.get("moneda", "SOLES")
+        factura.simbolo_moneda = datos.get("simbolo_moneda", "S/.")
+        factura.url_imagen = datos.get("url_imagen")
+        
+        import json
+        factura.coordenadas_json = json.dumps(datos.get("coordenadas", {}))
+        
         factura.texto_crudo = datos.get("texto_crudo")
         factura.es_valido = datos.get("es_valido", False)
         factura.estado = datos.get("estado", "ERROR_OCR")
@@ -80,6 +91,9 @@ def guardar_factura_db(datos: dict) -> Factura:
         d = {c.name: getattr(factura, c.name) for c in factura.__table__.columns}
         if d["fecha_procesamiento"]:
             d["fecha_procesamiento"] = d["fecha_procesamiento"].isoformat()
+        
+        import json
+        d["coordenadas"] = json.loads(d.get("coordenadas_json") or "{}")
         d["alertas"] = alertas_desc
         return d
     except Exception as e:

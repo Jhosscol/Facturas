@@ -14,8 +14,8 @@ import config
 
 from src.database import inicializar_db, guardar_factura_db, obtener_facturas, obtener_factura_por_id, eliminar_factura_db, obtener_estadisticas
 from src.preprocessing import preprocesar
-from src.ocr_engine import extraer_texto, calcular_confianza
-from src.entity_extractor import extraer_datos
+from src.ocr_engine import extraer_texto, calcular_confianza, extraer_datos_posicionales
+from src.entity_extractor import extraer_datos, vincular_coordenadas
 from src.validator import validar
 from src.exporter import exportar_json
 
@@ -29,8 +29,9 @@ async def lifespan(app: FastAPI):
 app = FastAPI(title="Sistema OCR Facturas", lifespan=lifespan)
 app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
 
-# Servir el frontend
+# Servir el frontend y las imágenes subidas
 app.mount("/app", StaticFiles(directory=os.path.join(config.BASE_DIR, "frontend"), html=True), name="frontend")
+app.mount("/uploads", StaticFiles(directory=config.INPUT_DIR), name="uploads")
 
 EXTENSIONES_PERMITIDAS = {".jpg", ".jpeg", ".png", ".pdf"}
 
@@ -51,12 +52,43 @@ async def procesar_factura_endpoint(archivo: UploadFile = File(...)):
     with open(ruta_temp, "wb") as f:
         f.write(await archivo.read())
     inicio = time.time()
+    
+    # 1. Obtener dimensiones originales
+    import cv2
+    img_orig = cv2.imread(ruta_temp)
+    h_orig, w_orig = img_orig.shape[:2]
+    
+    # 2. Preprocesar (posible cambio de tamaño)
     imagen = preprocesar(ruta_temp)
+    h_pre, w_pre = imagen.shape[:2]
+    
+    # 3. Calcular factores de escala
+    scale_x = w_orig / w_pre
+    scale_y = h_orig / h_pre
+    
     texto_crudo = extraer_texto(imagen)
     confianza = calcular_confianza(imagen)
+    pos_data = extraer_datos_posicionales(imagen)
+    
+    # 4. Escalar cajas de coordenadas al tamaño original
+    for item in pos_data:
+        x, y, w, h = item["box"]
+        item["box"] = [
+            int(x * scale_x),
+            int(y * scale_y),
+            int(w * scale_x),
+            int(h * scale_y)
+        ]
+    
     datos = extraer_datos(texto_crudo)
+    
+    # Extraer coordenadas para visualización
+    pos_data = extraer_datos_posicionales(imagen)
+    datos["coordenadas"] = vincular_coordenadas(datos, pos_data)
+    
     datos["confianza_ocr"] = confianza
     datos["archivo_origen"] = filename
+    datos["url_imagen"] = f"/uploads/{filename}"
     datos["texto_crudo"] = texto_crudo
     res_val = validar(datos)
     datos.update(res_val)
@@ -75,3 +107,6 @@ async def listar_facturas():
 @app.get("/estadisticas/")
 async def estadisticas():
     return {"estadisticas": obtener_estadisticas()}
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run("src.api:app", host="127.0.0.1", port=8000, reload=True)
