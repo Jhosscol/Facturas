@@ -74,6 +74,10 @@
                                 <strong id="res-ruc">-</strong>
                             </div>
                             <div class="data-group">
+                                <span>Cliente:</span>
+                                <strong id="res-cliente">-</strong>
+                            </div>
+                            <div class="data-group">
                                 <span>Total:</span>
                                 <strong id="res-total" class="highlight">-</strong>
                             </div>
@@ -90,10 +94,50 @@
                                 <h4>Alertas de Validación:</h4>
                                 <ul id="alerts-list"></ul>
                             </div>
+
+                            <div class="action-container" style="margin-top: 1.5rem;">
+                                <button class="btn-secondary" id="btn-add-last" style="width: 100%;">
+                                    Añadir a la lista de exportación
+                                </button>
+                            </div>
                         </div>
                     </div>
                 </section>
             </div>
+
+            <!-- Panel de Facturas Procesadas -->
+            <section class="history-panel glass" style="margin-top: 2rem; padding: 2rem;">
+                <div class="section-header">
+                    <h2>Facturas Procesadas</h2>
+                    <button class="btn-primary" id="btn-exportar" disabled>
+                        Exportar Seleccionadas a Excel (<span id="export-count">0</span>)
+                    </button>
+                </div>
+                <div class="table-container" style="margin-top: 1.5rem; overflow-x: auto;">
+                    <table class="facturas-table">
+                        <thead>
+                            <tr>
+                                <th style="width: 50px; text-align: center;"><input type="checkbox" id="select-all"></th>
+                                <th>Nro. Factura</th>
+                                <th>Proveedor</th>
+                                <th>RUC</th>
+                                <th>Cliente</th>
+                                <th>Fecha Emisión</th>
+                                <th>Total</th>
+                                <th>Confianza OCR</th>
+                                <th>Estado</th>
+                            </tr>
+                        </thead>
+                        <tbody id="facturas-tbody">
+                            <tr>
+                                <td colspan="8" class="placeholder-text" style="text-align: center; padding: 2rem; font-style: italic;">
+                                    No hay facturas procesadas disponibles.
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </section>
         </main>
     </div>
 

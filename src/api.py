@@ -6,7 +6,7 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, UploadFile, File, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
@@ -17,7 +17,7 @@ from src.preprocessing import preprocesar
 from src.ocr_engine import extraer_texto, calcular_confianza
 from src.entity_extractor import extraer_datos
 from src.validator import validar
-from src.exporter import exportar_json
+from src.exporter import exportar_json, generar_excel
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -75,3 +75,33 @@ async def listar_facturas():
 @app.get("/estadisticas/")
 async def estadisticas():
     return {"estadisticas": obtener_estadisticas()}
+
+@app.get("/facturas/exportar/excel/")
+async def exportar_facturas_excel(ids: str = Query(..., description="IDs de facturas separadas por comas")):
+    try:
+        id_list = [int(x) for x in ids.split(",") if x.strip().isdigit()]
+    except Exception:
+        raise HTTPException(400, "IDs inválidos")
+        
+    if not id_list:
+        raise HTTPException(400, "Debe proporcionar al menos un ID de factura")
+        
+    db_facturas = []
+    for fid in id_list:
+        factura = obtener_factura_por_id(fid)
+        if factura:
+            db_facturas.append(factura.to_dict())
+            
+    if not db_facturas:
+        raise HTTPException(404, "No se encontraron facturas con los IDs proporcionados")
+        
+    excel_io = generar_excel(db_facturas)
+    
+    headers = {
+        'Content-Disposition': 'attachment; filename="facturas_exportadas.xlsx"'
+    }
+    return StreamingResponse(
+        excel_io,
+        headers=headers,
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    )

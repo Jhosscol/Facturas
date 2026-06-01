@@ -10,6 +10,7 @@ pytesseract
 spacy
 python-dateutil
 pandas
+openpyxl
 
 # --- Base de Datos ---
 SQLAlchemy
