@@ -30,6 +30,7 @@ class Factura(Base):
     texto_crudo = Column(Text, nullable=True)
     es_valido = Column(Boolean, default=False)
     estado = Column(String, default="ERROR_OCR")
+    metodo_extraccion = Column(String, default="regex")
     tiempo_procesamiento_seg = Column(Float, nullable=True)
     fecha_procesamiento = Column(DateTime, default=datetime.utcnow)
     alertas = relationship("Alerta", back_populates="factura", cascade="all, delete-orphan")
@@ -75,6 +76,7 @@ def guardar_factura_db(datos: dict) -> Factura:
         factura.texto_crudo = datos.get("texto_crudo")
         factura.es_valido = datos.get("es_valido", False)
         factura.estado = datos.get("estado", "ERROR_OCR")
+        factura.metodo_extraccion = datos.get("metodo_extraccion", "regex")
         factura.tiempo_procesamiento_seg = datos.get("tiempo_procesamiento_seg")
         
         db.query(Alerta).filter(Alerta.factura_id == factura.id).delete()

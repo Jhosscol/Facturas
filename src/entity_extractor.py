@@ -322,9 +322,9 @@ def _extraer_total(texto_norm: str, lineas: list) -> float | None:
     # Estrategia 1: regex directo con múltiples formatos
     patrones = [
         # «TOTAL S/ 708.00» o «TOTAL si 708.00»
-        r'(?<!SUB\s)(?<!SUB)TOTAL\s*[:\-]?\s*' + _SYM + r'\s*' + _NUM,
+        r'(?<!SUB)(?<!SUB\s)TOTAL\s*[:\-]?\s*' + _SYM + r'\s*' + _NUM,
         # «TOTAL: 708.00»
-        r'(?<!SUB\s)(?<!SUB)TOTAL\s*[:\-]?\s*' + _NUM,
+        r'(?<!SUB)(?<!SUB\s)TOTAL\s*[:\-]?\s*' + _NUM,
         # «CANCELADO 1,156.40»
         r'CANCELADO\s*[:\-]?\s*' + _NUM,
         # «IMPORTE TOTAL S/ 708.00»
@@ -336,7 +336,7 @@ def _extraer_total(texto_norm: str, lineas: list) -> float | None:
 
     # Estrategia 2: buscar por línea (keyword + monto pueden estar separados)
     val = _buscar_monto_por_linea(
-        r'(?<!SUB\s?)(?<!SUB)TOTAL(?!\s*OPER)',
+        r'(?<!SUB)(?<!SUB\s)TOTAL(?!\s*OPER)',
         lineas
     )
     if val:

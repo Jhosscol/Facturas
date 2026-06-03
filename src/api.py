@@ -15,7 +15,8 @@ import config
 from src.database import inicializar_db, guardar_factura_db, obtener_facturas, obtener_factura_por_id, eliminar_factura_db, obtener_estadisticas
 from src.preprocessing import preprocesar
 from src.ocr_engine import extraer_texto, calcular_confianza, extraer_datos_posicionales
-from src.entity_extractor import extraer_datos, vincular_coordenadas
+from src.openai_extractor import extraer_datos_hybrid
+from src.entity_extractor import vincular_coordenadas
 from src.validator import validar
 from src.exporter import exportar_json
 
@@ -80,7 +81,7 @@ async def procesar_factura_endpoint(archivo: UploadFile = File(...)):
             int(h * scale_y)
         ]
     
-    datos = extraer_datos(texto_crudo)
+    datos = extraer_datos_hybrid(texto_crudo)
     
     # Extraer coordenadas para visualización
     pos_data = extraer_datos_posicionales(imagen)

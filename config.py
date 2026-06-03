@@ -14,7 +14,7 @@ load_dotenv(os.path.join(os.path.dirname(os.path.abspath(__file__)), ".env"))
 # ============================================================
 # API Keys
 # ============================================================
-GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "AIzaSyCSHtlIZ5KkTLMwPh7f4vOvfSahuTB8pL4")
+OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "")
 
 # ============================================================
 # Rutas del Proyecto
@@ -61,6 +61,13 @@ TOLERANCIA_MONTO = 0.50
 # Base de Datos — SQLite
 # ============================================================
 DATABASE_URL = f"sqlite:///{os.path.join(DATA_DIR, 'facturas.db')}"
+
+# ============================================================
+# OpenAI ChatGPT — Normalización Semántica
+# ============================================================
+OPENAI_MODEL = "gpt-4o-mini"               # Modelo rápido y económico
+OPENAI_ENABLED = True                      # Switch para desactivar OpenAI (usa solo regex)
+OPENAI_TIMEOUT = 15                        # Timeout en segundos para la API
 
 # ============================================================
 # Preprocesamiento de Imágenes

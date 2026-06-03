@@ -1,5 +1,5 @@
 """
-Script de prueba: extrae datos de cada factura disponible y muestra los resultados.
+Script de prueba: extrae datos de cada factura usando el extractor híbrido (Gemini + Regex).
 """
 import os
 import sys
@@ -9,12 +9,12 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 from src.preprocessing import preprocesar
 from src.ocr_engine import extraer_texto
-from src.entity_extractor import extraer_datos
+from src.openai_extractor import extraer_datos_hybrid
 
 INPUT_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "data", "input")
 
 print("=" * 80)
-print("  TEST DE EXTRACCIÓN DE FACTURAS")
+print("  TEST DE EXTRACCIÓN HÍBRIDA (Gemini + Regex)")
 print("=" * 80)
 
 for fname in sorted(os.listdir(INPUT_DIR)):
@@ -29,8 +29,10 @@ for fname in sorted(os.listdir(INPUT_DIR)):
     try:
         imagen = preprocesar(ruta)
         texto = extraer_texto(imagen)
-        datos = extraer_datos(texto)
+        datos = extraer_datos_hybrid(texto)
 
+        metodo = datos.get('metodo_extraccion', 'desconocido')
+        print(f"\n  🔧 Método:       {metodo.upper()}")
         print(f"  Proveedor:     {datos['proveedor_nombre']}")
         print(f"  RUC:           {datos['proveedor_ruc']}")
         print(f"  Factura N°:    {datos['numero_factura']}")
@@ -50,6 +52,8 @@ for fname in sorted(os.listdir(INPUT_DIR)):
 
     except Exception as e:
         print(f"  ❌ Error: {e}")
+        import traceback
+        traceback.print_exc()
 
 print(f"\n{'=' * 80}")
 print("  FIN DEL TEST")
