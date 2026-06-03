@@ -14,8 +14,9 @@ import config
 
 from src.database import inicializar_db, guardar_factura_db, obtener_facturas, obtener_factura_por_id, eliminar_factura_db, obtener_estadisticas
 from src.preprocessing import preprocesar
-from src.ocr_engine import extraer_texto, calcular_confianza
-from src.entity_extractor import extraer_datos
+from src.ocr_engine import extraer_texto, calcular_confianza, extraer_datos_posicionales
+from src.openai_extractor import extraer_datos_hybrid
+from src.entity_extractor import vincular_coordenadas
 from src.validator import validar
 from src.exporter import exportar_json, generar_excel
 
@@ -29,8 +30,9 @@ async def lifespan(app: FastAPI):
 app = FastAPI(title="Sistema OCR Facturas", lifespan=lifespan)
 app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
 
-# Servir el frontend
+# Servir el frontend y las imágenes subidas
 app.mount("/app", StaticFiles(directory=os.path.join(config.BASE_DIR, "frontend"), html=True), name="frontend")
+app.mount("/uploads", StaticFiles(directory=config.INPUT_DIR), name="uploads")
 
 EXTENSIONES_PERMITIDAS = {".jpg", ".jpeg", ".png", ".pdf"}
 
@@ -51,12 +53,43 @@ async def procesar_factura_endpoint(archivo: UploadFile = File(...)):
     with open(ruta_temp, "wb") as f:
         f.write(await archivo.read())
     inicio = time.time()
+    
+    # 1. Obtener dimensiones originales
+    import cv2
+    img_orig = cv2.imread(ruta_temp)
+    h_orig, w_orig = img_orig.shape[:2]
+    
+    # 2. Preprocesar (posible cambio de tamaño)
     imagen = preprocesar(ruta_temp)
+    h_pre, w_pre = imagen.shape[:2]
+    
+    # 3. Calcular factores de escala
+    scale_x = w_orig / w_pre
+    scale_y = h_orig / h_pre
+    
     texto_crudo = extraer_texto(imagen)
     confianza = calcular_confianza(imagen)
-    datos = extraer_datos(texto_crudo)
+    pos_data = extraer_datos_posicionales(imagen)
+    
+    # 4. Escalar cajas de coordenadas al tamaño original
+    for item in pos_data:
+        x, y, w, h = item["box"]
+        item["box"] = [
+            int(x * scale_x),
+            int(y * scale_y),
+            int(w * scale_x),
+            int(h * scale_y)
+        ]
+    
+    datos = extraer_datos_hybrid(texto_crudo)
+    
+    # Extraer coordenadas para visualización
+    pos_data = extraer_datos_posicionales(imagen)
+    datos["coordenadas"] = vincular_coordenadas(datos, pos_data)
+    
     datos["confianza_ocr"] = confianza
     datos["archivo_origen"] = filename
+    datos["url_imagen"] = f"/uploads/{filename}"
     datos["texto_crudo"] = texto_crudo
     res_val = validar(datos)
     datos.update(res_val)
@@ -75,36 +108,6 @@ async def listar_facturas():
 @app.get("/estadisticas/")
 async def estadisticas():
     return {"estadisticas": obtener_estadisticas()}
-
-@app.get("/facturas/exportar/excel/")
-async def exportar_facturas_excel(ids: str = Query(..., description="IDs de facturas separadas por comas")):
-    try:
-        id_list = [int(x) for x in ids.split(",") if x.strip().isdigit()]
-    except Exception:
-        raise HTTPException(400, "IDs inválidos")
-        
-    if not id_list:
-        raise HTTPException(400, "Debe proporcionar al menos un ID de factura")
-        
-    db_facturas = []
-    for fid in id_list:
-        factura = obtener_factura_por_id(fid)
-        if factura:
-            db_facturas.append(factura.to_dict())
-            
-    if not db_facturas:
-        raise HTTPException(404, "No se encontraron facturas con los IDs proporcionados")
-        
-    excel_io, is_xlsx = generar_excel(db_facturas)
-    
-    filename = "facturas_exportadas.xlsx" if is_xlsx else "facturas_exportadas.csv"
-    media_type = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" if is_xlsx else "text/csv"
-    
-    headers = {
-        'Content-Disposition': f'attachment; filename="{filename}"'
-    }
-    return StreamingResponse(
-        excel_io,
-        headers=headers,
-        media_type=media_type
-    )
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run("src.api:app", host="127.0.0.1", port=8000, reload=True)

@@ -5,7 +5,7 @@ import time
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 from src.preprocessing import preprocesar
 from src.ocr_engine import extraer_texto, calcular_confianza
-from src.entity_extractor import extraer_datos
+from src.gemini_extractor import extraer_datos_hybrid
 from src.validator import validar
 from src.exporter import exportar_json
 from src.database import inicializar_db, guardar_factura_db
@@ -16,7 +16,7 @@ def procesar_factura(ruta: str):
     imagen = preprocesar(ruta)
     texto = extraer_texto(imagen)
     conf = calcular_confianza(imagen)
-    datos = extraer_datos(texto)
+    datos = extraer_datos_hybrid(texto)
     datos["confianza_ocr"] = conf
     datos["archivo_origen"] = os.path.basename(ruta)
     datos["texto_crudo"] = texto

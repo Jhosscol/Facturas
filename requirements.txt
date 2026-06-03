@@ -20,6 +20,11 @@ fastapi
 uvicorn[standard]
 python-multipart
 
+# --- LLM (Gemini) ---
+google-genai
+pydantic
+python-dotenv
+
 # --- Testing ---
 pytest
 
