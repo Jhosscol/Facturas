@@ -45,11 +45,18 @@ def extraer_datos(texto: str) -> dict:
 
     # ── Fecha de Emisión ──
     patrones_fecha = [
+        # Con fecha en la línea siguiente (ej: Fecha de Emisión\n29/01/2019)
+        r'(?:FECHA(?:\s+DE\s+EMISI[OÓ.]N)?|FECHA\s*EMISI[OÓ.]N|EMISI[OÓ.]N)\s*[:\-]?\s*[^\n]*\n\s*(\d{1,2}[/\-\.]\d{1,2}[/\-\.]\d{2,4})',
+        r'(?:FECHA(?:\s+DE\s+EMISI[OÓ.]N)?|FECHA\s*EMISI[OÓ.]N|EMISI[OÓ.]N)\s*[:\-]?\s*[^\n]*\n\s*(\d{4}[/\-\.]\d{1,2}[/\-\.]\d{1,2})',
+        # En la misma línea (formatos DD/MM/YYYY y YYYY-MM-DD)
         r'(?:FECHA(?:\s+DE\s+EMISI[OÓ.]N)?|FECHA\s*EMISI[OÓ.]N|FECHA)\s*[:\-]?\s*(\d{1,2}[/\-\.]\d{1,2}[/\-\.]\d{2,4})',
+        r'(?:FECHA(?:\s+DE\s+EMISI[OÓ.]N)?|FECHA\s*EMISI[OÓ.]N|FECHA)\s*[:\-]?\s*(\d{4}[/\-\.]\d{1,2}[/\-\.]\d{1,2})',
         r'FECHA\s*[:\-]?\s*(\d{2})(\d{2})(\d{4})',
         r'FECHA\s*[:\-]?\s*(\d{1,2}\s+de\s+[a-zA-ZáéíóúÁÉÍÓÚ]+\s+(?:del?\s+)?\d{2,4})',
         r'\b(\d{1,2}\s+de\s+[a-zA-ZáéíóúÁÉÍÓÚ]+\s+(?:del?\s+)?\d{2,4})\b',
+        # Fechas sueltas
         r'(\d{1,2}[/\-\.]\d{1,2}[/\-\.]\d{2,4})',
+        r'(\d{4}[/\-\.]\d{1,2}[/\-\.]\d{1,2})',
     ]
     for pat in patrones_fecha:
         m = re.search(pat, texto, re.IGNORECASE)
@@ -66,8 +73,10 @@ def extraer_datos(texto: str) -> dict:
     patrones_cliente = [
         # Con documento o dirección intermedia en líneas siguientes (ej: ADQUIRIENTE\nND: 123\nNombre)
         r'(?:SE.OR(?:ES)?|CLIENTE|ADQUIR[IE]*NTE|DENOMINACI.?N)[:\-\s]*(?:(?:ND|RUC|DNI|DOC|DIRECCI.N)[:\-\s\d\-]*\n\s*)+([^\n\r]+)',
+        # Con texto en la misma línea y el nombre en la siguiente (ej: FACTURAR A ENVIAR A\nNombre Nombre)
+        r'(?:FACTURAR\s+A|BILL\s+TO|EMITID[OA]\s+A|ADQUIR[IE]*NTE|CLIENTE|SE[NÑ]OR(?:ES)?)[^\n]*\n\s*([^\n\r]+)',
         # En la misma línea
-        r'(?:SE.OR(?:ES)?|CLIENTE|ADQUIR[IE]*NTE|DENOMINACI.?N|NOMBRES?|RAZ.?N\s+SOCIAL\s+CLIENTE)\s*[:\-]?\s*([^\n\r]+)',
+        r'(?:SE.OR(?:ES)?|CLIENTE|ADQUIR[IE]*NTE|DENOMINACI.?N|NOMBRES?|RAZ.?N\s+SOCIAL\s+CLIENTE|FACTURAR\s+A|BILL\s+TO|EMITID[OA]\s+A)\s*[:\-]?\s*([^\n\r]+)',
     ]
     for pat in patrones_cliente:
         m = re.search(pat, texto, re.IGNORECASE)
@@ -76,21 +85,34 @@ def extraer_datos(texto: str) -> dict:
             # Limpiar
             nombre = re.sub(r'(?:R\.?U\.?C\.?|FECHA|DIRECCI[OÓ.]N|TELF|TEL[EÉ]FONO|MONEDA|VENCIMIENTO).*$', '', nombre, flags=re.IGNORECASE)
             nombre = nombre.strip(" -:,*°ºo")
+            
+            # Quitar repeticiones por lectura lineal de columnas paralelas (ej: "Leda Villareal Leda Villareal")
+            nombre_words = nombre.split()
+            if len(nombre_words) % 2 == 0:
+                mid = len(nombre_words) // 2
+                first_half = " ".join(nombre_words[:mid])
+                second_half = " ".join(nombre_words[mid:])
+                if first_half.lower() == second_half.lower():
+                    nombre = first_half
+                    
             if len(nombre) > 2:
                 datos["cliente_nombre"] = nombre[:100]
                 break
 
     # ── RUCs: Clasificación Inteligente de RUC Emisor y RUC Cliente ──
-    rucs_candidatos = re.findall(r'\b(\d{11})\b', texto)
+    # Permitir guiones o espacios opcionales entre los dígitos del RUC (ej: "20-12345678-9" o "20 12345678 9")
+    rucs_candidatos_raw = re.findall(r'\b(\d(?:[-\s]?\d){10})\b', texto)
     rucs_unicos = []
-    for r in rucs_candidatos:
-        if r not in rucs_unicos:
-            rucs_unicos.append(r)
+    for r in rucs_candidatos_raw:
+        r_clean = re.sub(r'\D', '', r) # Remover guiones y espacios
+        if r_clean not in rucs_unicos:
+            rucs_unicos.append(r_clean)
             
     cliente_ruc = None
-    client_section_match = re.search(r'(?:SE.OR(?:ES)?|CLIENTE|ADQUIRENTE|DENOMINACI.N)[^.]{0,150}?\b(\d{11})\b', texto, re.IGNORECASE | re.DOTALL)
+    # Búsqueda de RUC del cliente con soporte para guiones o espacios
+    client_section_match = re.search(r'(?:SE.OR(?:ES)?|CLIENTE|ADQUIRENTE|DENOMINACI.N)[^.]{0,150}?\b(\d(?:[-\s]?\d){10})\b', texto, re.IGNORECASE | re.DOTALL)
     if client_section_match:
-        cliente_ruc = client_section_match.group(1)
+        cliente_ruc = re.sub(r'\D', '', client_section_match.group(1))
         
     for ruc in rucs_unicos:
         if ruc == cliente_ruc:
@@ -186,13 +208,13 @@ def extraer_datos(texto: str) -> dict:
         val = extraer_monto(pat, texto)
         if val is not None:
             datos["subtotal"] = val
-            break
 
+    # ── IGV / IVA ──
     patrones_igv = [
-        r'I\.?G\.?V\.?\s*(?:\(?\d+%?\)?)?\s*[:\-]?\s*[\$€S]?[/.]?\s*([\d]+(?:[.,]\d{1,2})?)',
-        r'I\.?V\.?A\.?\s*(?:\(?\d+%?\)?)?\s*[:\-]?\s*[\$€S]?[/.]?\s*([\d]+(?:[.,]\d{1,2})?)',
-        r'IMPUESTO\s*[:\-]?\s*[\$€S]?[/.]?\s*([\d]+(?:[.,]\d{1,2})?)',
-        r'(?:VA|IVA)\s+\d+\s*[.,]?\s*\d*\s*%\s*[:\-]?\s*[\$€S]?[/.]?\s*([\d]+(?:[.,]\d{1,2})?)',
+        r'\bI\.?G\.?V\.?\s*(?:\(?\d+%?\)?)?\s*[:\-]?\s*[\$€S]?[/.]?\s*([\d]+(?:[.,]\d{1,2})?)',
+        r'\bI\.?V\.?A\.?\s*(?:\(?\d+%?\)?)?\s*[:\-]?\s*[\$€S]?[/.]?\s*([\d]+(?:[.,]\d{1,2})?)',
+        r'\bIMPUESTO\s*[:\-]?\s*[\$€S]?[/.]?\s*([\d]+(?:[.,]\d{1,2})?)',
+        r'\b(?:VA|IVA)\s+\d+\s*[.,]?\s*\d*\s*%\s*[:\-]?\s*[\$€S]?[/.]?\s*([\d]+(?:[.,]\d{1,2})?)',
     ]
     for pat in patrones_igv:
         val = extraer_monto(pat, texto)

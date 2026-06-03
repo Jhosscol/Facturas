@@ -14,7 +14,7 @@ def exportar_json(datos: dict):
     with open(os.path.join(out_dir, fname), "w", encoding="utf-8") as f:
         json.dump(datos, f, indent=2, ensure_ascii=False)
 
-def generar_excel(facturas: list) -> io.BytesIO:
+def generar_excel(facturas: list) -> tuple:
     # Preprocesar alertas para unirlas con comas
     for fact in facturas:
         if "alertas" in fact and isinstance(fact["alertas"], list):
@@ -45,11 +45,12 @@ def generar_excel(facturas: list) -> io.BytesIO:
         # Try writing as excel (.xlsx)
         with pd.ExcelWriter(output, engine='openpyxl') as writer:
             df_filtrado.to_excel(writer, index=False, sheet_name="Facturas")
+        output.seek(0)
+        return output, True
     except Exception as e:
         # Fallback to CSV if excel writer fails (e.g. missing openpyxl or error)
         # Using utf-8-sig to make Excel open it with correct Spanish accents and characters
         output = io.BytesIO()
         df_filtrado.to_csv(output, index=False, sep=";", encoding="utf-8-sig")
-        
-    output.seek(0)
-    return output
+        output.seek(0)
+        return output, False

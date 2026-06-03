@@ -65,6 +65,12 @@
                             Los datos extraídos aparecerán aquí.
                         </div>
                         <div class="result-data hidden" id="result-data">
+                            <!-- Visor de la Factura -->
+                            <div class="invoice-preview" id="invoice-preview">
+                                <img id="preview-img" src="" alt="Vista previa de la factura" class="hidden">
+                                <embed id="preview-pdf" src="" type="application/pdf" class="hidden">
+                            </div>
+
                             <div class="data-group">
                                 <span>Proveedor:</span>
                                 <strong id="res-nombre">-</strong>
@@ -96,7 +102,7 @@
                             </div>
 
                             <div class="action-container" style="margin-top: 1.5rem;">
-                                <button class="btn-secondary" id="btn-add-last" style="width: 100%;">
+                                <button class="btn-secondary" id="btn-add-last" style="width: 100%;" disabled>
                                     Añadir a la lista de exportación
                                 </button>
                             </div>

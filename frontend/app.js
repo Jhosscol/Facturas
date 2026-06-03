@@ -209,8 +209,16 @@ function actualizarBotonExportar() {
 
 function actualizarBotonUltimaFactura() {
     const btn = document.getElementById("btn-add-last");
-    if (!btn || !ultimoIdFactura) return;
+    if (!btn) return;
     
+    if (!ultimoIdFactura) {
+        btn.disabled = true;
+        btn.innerText = "Añadir a la lista de exportación";
+        btn.classList.remove("added");
+        return;
+    }
+    
+    btn.disabled = false;
     if (selectedInvoiceIds.has(ultimoIdFactura)) {
         btn.innerText = "✓ Añadido a la exportación";
         btn.classList.add("added");
@@ -249,8 +257,22 @@ async function procesarFactura(file) {
         const data = await res.json();
         const f = data.factura;
         
-        // Save last invoice id
+        // Save last invoice id and auto-select it for export
         ultimoIdFactura = f.id;
+        selectedInvoiceIds.add(f.id);
+
+        // Visualizar Factura en el panel
+        const previewImg = document.getElementById("preview-img");
+        const previewPdf = document.getElementById("preview-pdf");
+        if (file.type === "application/pdf") {
+            previewImg.classList.add("hidden");
+            previewPdf.classList.remove("hidden");
+            previewPdf.src = URL.createObjectURL(file);
+        } else {
+            previewPdf.classList.add("hidden");
+            previewImg.classList.remove("hidden");
+            previewImg.src = URL.createObjectURL(file);
+        }
 
         // Populate results
         document.getElementById("res-nombre").innerText = f.proveedor_nombre || "No detectado";

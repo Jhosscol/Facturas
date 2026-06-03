@@ -95,13 +95,16 @@ async def exportar_facturas_excel(ids: str = Query(..., description="IDs de fact
     if not db_facturas:
         raise HTTPException(404, "No se encontraron facturas con los IDs proporcionados")
         
-    excel_io = generar_excel(db_facturas)
+    excel_io, is_xlsx = generar_excel(db_facturas)
+    
+    filename = "facturas_exportadas.xlsx" if is_xlsx else "facturas_exportadas.csv"
+    media_type = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" if is_xlsx else "text/csv"
     
     headers = {
-        'Content-Disposition': 'attachment; filename="facturas_exportadas.xlsx"'
+        'Content-Disposition': f'attachment; filename="{filename}"'
     }
     return StreamingResponse(
         excel_io,
         headers=headers,
-        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        media_type=media_type
     )
