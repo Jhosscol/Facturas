@@ -1,5 +1,5 @@
-from sqlalchemy import create_engine, Column, Integer, String, Float, Boolean, Text, ForeignKey, DateTime
-from sqlalchemy.orm import declarative_base, sessionmaker, relationship
+from sqlalchemy import create_engine, Column, Integer, String, Float, Boolean, Text, ForeignKey, DateTime, text
+from sqlalchemy.orm import declarative_base, sessionmaker, relationship, joinedload
 from datetime import datetime
 import os
 import sys
@@ -18,14 +18,20 @@ class Factura(Base):
     fecha_emision = Column(String, nullable=True)
     proveedor_ruc = Column(String, nullable=True)
     proveedor_nombre = Column(String, nullable=True)
+    cliente_nombre = Column(String, nullable=True)
     subtotal = Column(Float, nullable=True)
     igv = Column(Float, nullable=True)
     total = Column(Float, nullable=True)
     confianza_ocr = Column(Float, nullable=True)
+    moneda = Column(String, default="SOLES")
+    simbolo_moneda = Column(String, default="S/.")
     archivo_origen = Column(String, unique=True, index=True)
+    url_imagen = Column(String, nullable=True)
+    coordenadas_json = Column(Text, nullable=True)
     texto_crudo = Column(Text, nullable=True)
     es_valido = Column(Boolean, default=False)
     estado = Column(String, default="ERROR_OCR")
+    metodo_extraccion = Column(String, default="regex")
     tiempo_procesamiento_seg = Column(Float, nullable=True)
     fecha_procesamiento = Column(DateTime, default=datetime.utcnow)
     alertas = relationship("Alerta", back_populates="factura", cascade="all, delete-orphan")
@@ -45,6 +51,18 @@ class Alerta(Base):
 
 def inicializar_db():
     Base.metadata.create_all(bind=engine)
+    db = SessionLocal()
+    try:
+        cursor = db.execute(text("PRAGMA table_info(facturas)"))
+        columnas = [row[1] for row in cursor.fetchall()]
+        if "cliente_nombre" not in columnas:
+            db.execute(text("ALTER TABLE facturas ADD COLUMN cliente_nombre VARCHAR"))
+            db.commit()
+    except Exception as e:
+        db.rollback()
+        print("[DB MIGRATION ERROR]", e)
+    finally:
+        db.close()
 
 def guardar_factura_db(datos: dict) -> Factura:
     db = SessionLocal()
@@ -57,13 +75,22 @@ def guardar_factura_db(datos: dict) -> Factura:
         factura.fecha_emision = datos.get("fecha_emision")
         factura.proveedor_ruc = datos.get("proveedor_ruc")
         factura.proveedor_nombre = datos.get("proveedor_nombre")
+        factura.cliente_nombre = datos.get("cliente_nombre")
         factura.subtotal = datos.get("subtotal")
         factura.igv = datos.get("igv")
         factura.total = datos.get("total")
         factura.confianza_ocr = datos.get("confianza_ocr")
+        factura.moneda = datos.get("moneda", "SOLES")
+        factura.simbolo_moneda = datos.get("simbolo_moneda", "S/.")
+        factura.url_imagen = datos.get("url_imagen")
+        
+        import json
+        factura.coordenadas_json = json.dumps(datos.get("coordenadas", {}))
+        
         factura.texto_crudo = datos.get("texto_crudo")
         factura.es_valido = datos.get("es_valido", False)
         factura.estado = datos.get("estado", "ERROR_OCR")
+        factura.metodo_extraccion = datos.get("metodo_extraccion", "regex")
         factura.tiempo_procesamiento_seg = datos.get("tiempo_procesamiento_seg")
         
         db.query(Alerta).filter(Alerta.factura_id == factura.id).delete()
@@ -80,6 +107,9 @@ def guardar_factura_db(datos: dict) -> Factura:
         d = {c.name: getattr(factura, c.name) for c in factura.__table__.columns}
         if d["fecha_procesamiento"]:
             d["fecha_procesamiento"] = d["fecha_procesamiento"].isoformat()
+        
+        import json
+        d["coordenadas"] = json.loads(d.get("coordenadas_json") or "{}")
         d["alertas"] = alertas_desc
         return d
     except Exception as e:
@@ -91,14 +121,14 @@ def guardar_factura_db(datos: dict) -> Factura:
 def obtener_facturas():
     db = SessionLocal()
     try:
-        return db.query(Factura).all()
+        return db.query(Factura).options(joinedload(Factura.alertas)).all()
     finally:
         db.close()
 
 def obtener_factura_por_id(id: int):
     db = SessionLocal()
     try:
-        return db.query(Factura).filter(Factura.id == id).first()
+        return db.query(Factura).options(joinedload(Factura.alertas)).filter(Factura.id == id).first()
     finally:
         db.close()
 

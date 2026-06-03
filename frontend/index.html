@@ -6,7 +6,7 @@
     <title>OCR - Extracción Automática de Facturas</title>
     <!-- Google Fonts -->
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="styles.css?v=2026.06.03">
 </head>
 <body>
     <div class="background-shapes">
@@ -23,80 +23,160 @@
 
         <main class="dashboard">
             <!-- Estadísticas -->
-            <section class="stats-panel glass">
+            <section class="stats-panel glass fade-in">
                 <h2>Resumen Global</h2>
                 <div class="stats-grid">
-                    <div class="stat-card">
-                        <h3>Total Facturas</h3>
-                        <p id="stat-total">0</p>
-                    </div>
-                    <div class="stat-card">
-                        <h3>Monto Procesado</h3>
-                        <p id="stat-monto">$0.00</p>
-                    </div>
-                    <div class="stat-card success">
-                        <h3>Exitosas</h3>
-                        <p id="stat-exitosas">0</p>
-                    </div>
+                    <div class="stat-card"><h3>Total Facturas</h3><p id="stat-total">0</p></div>
+                    <div class="stat-card"><h3>Monto Procesado</h3><p id="stat-monto">$0.00</p></div>
+                    <div class="stat-card success"><h3>Exitosas</h3><p id="stat-exitosas">0</p></div>
                 </div>
             </section>
 
-            <div class="main-content">
-                <!-- Zona de Carga -->
-                <section class="upload-section glass">
-                    <h2>Subir Nueva Factura</h2>
-                    <div class="drop-zone" id="drop-zone">
-                        <div class="drop-content">
-                            <span class="icon">📄</span>
-                            <p>Arrastra y suelta tu factura aquí</p>
-                            <span class="divider">o</span>
-                            <button class="btn-primary" onclick="document.getElementById('file-input').click()">Seleccionar Archivo</button>
-                            <input type="file" id="file-input" hidden accept=".jpg, .jpeg, .png, .pdf">
+            <div class="main-layout">
+                <!-- Columna Izquierda: Visor de Imagen -->
+                <section class="viewer-section glass fade-in">
+                    <div class="section-header">
+                        <h2>Documento Original</h2>
+                        <span class="badge" id="zoom-level">100%</span>
+                    </div>
+                    <div class="image-viewport" id="image-viewport">
+                        <div class="placeholder-viewer" id="viewer-placeholder">
+                            <span class="icon">🔍</span>
+                            <p>Sube una factura para visualizarla aquí</p>
+                        </div>
+                        <div class="image-wrapper hidden" id="image-wrapper">
+                            <img id="factura-img" src="" alt="Factura">
+                            <svg id="ocr-overlay" viewBox="0 0 100 100" preserveAspectRatio="none"></svg>
                         </div>
                     </div>
-                    <div id="upload-status" class="status-message hidden">Procesando factura con IA...</div>
                 </section>
 
-                <!-- Resultados de la Última Factura -->
-                <section class="result-section glass">
-                    <h2>Última Factura Extraída</h2>
-                    <div class="result-card" id="result-card">
-                        <div class="placeholder-text" id="result-placeholder">
-                            Los datos extraídos aparecerán aquí.
-                        </div>
-                        <div class="result-data hidden" id="result-data">
-                            <div class="data-group">
-                                <span>Proveedor:</span>
-                                <strong id="res-nombre">-</strong>
+                <!-- Columna Derecha: Acciones y Resultados -->
+                <div class="side-panel">
+                    <!-- Zona de Carga -->
+                    <section class="upload-section glass fade-in">
+                        <h2>Cargar Documento</h2>
+                        <div class="drop-zone" id="drop-zone">
+                            <div class="drop-content">
+                                <span class="icon">📤</span>
+                                <p>Arrastra tu factura aquí</p>
+                                <button class="btn-primary" onclick="document.getElementById('file-input').click()">Explorar</button>
+                                <input type="file" id="file-input" hidden accept=".jpg, .jpeg, .png, .pdf">
                             </div>
-                            <div class="data-group">
-                                <span>RUC:</span>
-                                <strong id="res-ruc">-</strong>
-                            </div>
-                            <div class="data-group">
-                                <span>Total:</span>
-                                <strong id="res-total" class="highlight">-</strong>
-                            </div>
-                            <div class="data-group">
-                                <span>Confianza OCR:</span>
-                                <strong id="res-confianza">-</strong>
-                            </div>
-                            <div class="data-group">
-                                <span>Estado:</span>
-                                <strong id="res-estado">-</strong>
-                            </div>
-                            
-                            <div class="alerts-container hidden" id="alerts-container">
-                                <h4>Alertas de Validación:</h4>
-                                <ul id="alerts-list"></ul>
+
+                            <div class="action-container" style="margin-top: 1.5rem;">
+                                <button class="btn-secondary" id="btn-add-last" style="width: 100%;">
+                                    Añadir a la lista de exportación
+                                </button>
                             </div>
                         </div>
-                    </div>
-                </section>
+                        <div id="upload-status" class="status-message hidden">Procesando...</div>
+                    </section>
+
+                    <!-- Resultados -->
+                    <section class="result-section glass fade-in">
+                        <h2>Datos Extraídos</h2>
+                        <div class="result-card" id="result-card">
+                            <div class="placeholder-text" id="result-placeholder">
+                                Esperando datos...
+                            </div>
+                            <div class="result-data hidden" id="result-data">
+                                <!-- Visor de la Factura -->
+                                <div class="invoice-preview" id="invoice-preview">
+                                    <img id="preview-img" src="" alt="Vista previa de la factura" class="hidden">
+                                    <embed id="preview-pdf" src="" type="application/pdf" class="hidden">
+                                </div>
+                                <div class="data-group interactive" data-field="proveedor_nombre">
+                                    <span>Proveedor:</span>
+                                    <strong id="res-nombre">-</strong>
+                                </div>
+                                <div class="data-group interactive" data-field="proveedor_ruc">
+                                    <span>RUC:</span>
+                                    <strong id="res-ruc">-</strong>
+                                </div>
+                                <div class="data-group interactive" data-field="cliente_nombre">
+                                    <span>Cliente:</span>
+                                    <strong id="res-cliente">-</strong>
+                                </div>
+                                <div class="data-group interactive" data-field="numero_factura">
+                                    <span>Serie-Correlativo:</span>
+                                    <strong id="res-factura">-</strong>
+                                </div>
+                                <div class="data-group interactive" data-field="fecha_emision">
+                                    <span>Fecha Emisión:</span>
+                                    <strong id="res-fecha">-</strong>
+                                </div>
+                                <div class="divider"></div>
+                                <div class="data-group interactive" data-field="subtotal">
+                                    <span>Base Imponible:</span>
+                                    <strong id="res-subtotal">-</strong>
+                                </div>
+                                <div class="data-group interactive" data-field="igv">
+                                    <span>IGV (18%):</span>
+                                    <strong id="res-igv">-</strong>
+                                </div>
+                                <div class="data-group interactive" data-field="total">
+                                    <span>Total:</span>
+                                    <strong id="res-total" class="highlight">-</strong>
+                                </div>
+                                <div class="data-group">
+                                    <span>Confianza OCR:</span>
+                                    <div class="conf-bar">
+                                        <div id="res-confianza-bar" class="conf-fill" style="width: 0%"></div>
+                                        <span id="res-confianza-txt">0%</span>
+                                    </div>
+                                </div>
+
+                                <div class="action-buttons">
+                                    <button class="btn-secondary" id="btn-export-csv">📥 Exportar CSV (ERP)</button>
+                                </div>
+                                
+                                <div class="alerts-container hidden" id="alerts-container">
+                                    <h4>Alertas detectadas:</h4>
+                                    <ul id="alerts-list"></ul>
+                                </div>
+                            </div>
+                        </div>
+                    </section>
+                </div>
             </div>
+
+            <!-- Panel de Facturas Procesadas -->
+            <section class="history-panel glass" style="margin-top: 2rem; padding: 2rem;">
+                <div class="section-header">
+                    <h2>Facturas Procesadas</h2>
+                    <button class="btn-primary" id="btn-exportar" disabled>
+                        Exportar Seleccionadas a Excel (<span id="export-count">0</span>)
+                    </button>
+                </div>
+                <div class="table-container" style="margin-top: 1.5rem; overflow-x: auto;">
+                    <table class="facturas-table">
+                        <thead>
+                            <tr>
+                                <th style="width: 50px; text-align: center;"><input type="checkbox" id="select-all"></th>
+                                <th>Nro. Factura</th>
+                                <th>Proveedor</th>
+                                <th>RUC</th>
+                                <th>Cliente</th>
+                                <th>Fecha Emisión</th>
+                                <th>Total</th>
+                                <th>Confianza OCR</th>
+                                <th>Estado</th>
+                            </tr>
+                        </thead>
+                        <tbody id="facturas-tbody">
+                            <tr>
+                                <td colspan="9" class="placeholder-text" style="text-align: center; padding: 2rem; font-style: italic;">
+                                    No hay facturas procesadas disponibles.
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </section>
         </main>
     </div>
 
-    <script src="app.js"></script>
+    <script src="app.js?v=2026.06.03"></script>
 </body>
 </html>

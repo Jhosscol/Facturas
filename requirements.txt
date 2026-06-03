@@ -10,6 +10,7 @@ pytesseract
 spacy
 python-dateutil
 pandas
+openpyxl
 
 # --- Base de Datos ---
 SQLAlchemy
@@ -18,6 +19,11 @@ SQLAlchemy
 fastapi
 uvicorn[standard]
 python-multipart
+
+# --- LLM (Gemini) ---
+google-genai
+pydantic
+python-dotenv
 
 # --- Testing ---
 pytest
