@@ -42,6 +42,14 @@ class Factura(Base):
         if d["fecha_procesamiento"]: d["fecha_procesamiento"] = d["fecha_procesamiento"].isoformat()
         return d
 
+class RegistroERP(Base):
+    __tablename__ = "registro_erp"
+    id = Column(Integer, primary_key=True, index=True)
+    factura_id = Column(Integer, ForeignKey("facturas.id"))
+    fecha_sincronizacion = Column(DateTime, default=datetime.utcnow)
+    estado_erp = Column(String, default="SINCRONIZADO")
+    datos_enviados_json = Column(Text)
+
 class Alerta(Base):
     __tablename__ = "alertas"
     id = Column(Integer, primary_key=True, index=True)
@@ -153,5 +161,41 @@ def obtener_estadisticas():
             "exitosas": sum(1 for f in facturas if f.estado == "EXITO"),
             "monto_total": sum(f.total for f in facturas if f.total)
         }
+    finally:
+        db.close()
+
+def sincronizar_factura_erp(factura_id: int) -> bool:
+    db = SessionLocal()
+    import json
+    try:
+        f = db.query(Factura).filter(Factura.id == factura_id).first()
+        if not f: return False
+        
+        # Solo campos relevantes para integración ERP
+        payload = {
+            "factura_id":        f.id,
+            "numero_factura":    f.numero_factura,
+            "fecha_emision":     f.fecha_emision,
+            "proveedor_ruc":     f.proveedor_ruc,
+            "proveedor_nombre":  f.proveedor_nombre,
+            "cliente_nombre":    f.cliente_nombre,
+            "subtotal":          f.subtotal,
+            "igv":               f.igv,
+            "total":             f.total,
+            "moneda":            f.moneda,
+            "simbolo_moneda":    f.simbolo_moneda,
+            "confianza_ocr":     round(f.confianza_ocr, 2) if f.confianza_ocr else None,
+            "metodo_extraccion": f.metodo_extraccion,
+            "estado":            f.estado,
+            "fecha_procesamiento": f.fecha_procesamiento.isoformat() if f.fecha_procesamiento else None,
+        }
+        
+        nuevo = RegistroERP(
+            factura_id=f.id,
+            datos_enviados_json=json.dumps(payload, ensure_ascii=False)
+        )
+        db.add(nuevo)
+        db.commit()
+        return True
     finally:
         db.close()

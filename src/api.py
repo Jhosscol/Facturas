@@ -12,7 +12,7 @@ from fastapi.staticfiles import StaticFiles
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 import config
 
-from src.database import inicializar_db, guardar_factura_db, obtener_facturas, obtener_factura_por_id, eliminar_factura_db, obtener_estadisticas
+from src.database import inicializar_db, guardar_factura_db, obtener_facturas, obtener_factura_por_id, eliminar_factura_db, obtener_estadisticas, sincronizar_factura_erp
 from src.preprocessing import preprocesar
 from src.ocr_engine import extraer_texto, calcular_confianza, extraer_datos_posicionales
 from src.openai_extractor import extraer_datos_hybrid
@@ -108,6 +108,36 @@ async def listar_facturas():
 @app.get("/estadisticas/")
 async def estadisticas():
     return {"estadisticas": obtener_estadisticas()}
+
+@app.post("/erp/sincronizar/{factura_id}")
+async def sincronizar_erp(factura_id: int):
+    exito = sincronizar_factura_erp(factura_id)
+    if not exito:
+        raise HTTPException(404, "Factura no encontrada o error en integración simulada")
+    return {"mensaje": "Sincronizado con ERP exitosamente", "factura_id": factura_id}
+
+@app.get("/erp/registros/")
+async def listar_registros_erp():
+    from src.database import SessionLocal, RegistroERP
+    import json
+    db = SessionLocal()
+    try:
+        registros = db.query(RegistroERP).order_by(RegistroERP.fecha_sincronizacion.desc()).all()
+        return {
+            "total": len(registros),
+            "registros": [
+                {
+                    "id": r.id,
+                    "factura_id": r.factura_id,
+                    "fecha_sincronizacion": r.fecha_sincronizacion.isoformat() if r.fecha_sincronizacion else None,
+                    "estado_erp": r.estado_erp,
+                    "datos_enviados": json.loads(r.datos_enviados_json or "{}")
+                }
+                for r in registros
+            ]
+        }
+    finally:
+        db.close()
 
 @app.get("/facturas/exportar/excel/")
 async def exportar_facturas_excel(ids: str = Query(..., description="IDs de facturas separados por comas")):

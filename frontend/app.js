@@ -90,6 +90,34 @@ document.addEventListener("DOMContentLoaded", () => {
         actualizarBotonExportar();
         actualizarBotonUltimaFactura();
     });
+
+    const btnSyncLastErp = document.getElementById("btn-sync-last-erp");
+    if (btnSyncLastErp) {
+        btnSyncLastErp.addEventListener("click", async () => {
+            if (!ultimoIdFactura) return;
+            btnSyncLastErp.disabled = true;
+            btnSyncLastErp.innerText = "Enviando...";
+            try {
+                const res = await fetch(`${API_BASE}/erp/sincronizar/${ultimoIdFactura}`, { method: "POST" });
+                if (res.ok) {
+                    btnSyncLastErp.innerText = "✓ Enviado a ERP";
+                    btnSyncLastErp.style.backgroundColor = "var(--success)";
+                    btnSyncLastErp.style.color = "white";
+                } else {
+                    btnSyncLastErp.innerText = "Error al enviar";
+                }
+            } catch(e) {
+                btnSyncLastErp.innerText = "Error de red";
+            }
+            setTimeout(() => {
+                btnSyncLastErp.innerText = "🚀 Enviar a ERP";
+                btnSyncLastErp.style.backgroundColor = "";
+                btnSyncLastErp.style.color = "";
+                btnSyncLastErp.disabled = false;
+            }, 3000);
+        });
+    }
+
 });
 
 async function cargarEstadisticas() {
@@ -205,6 +233,16 @@ function actualizarBotonExportar() {
 
 function actualizarBotonUltimaFactura() {
     const btn = document.getElementById("btn-add-last");
+    const btnErp = document.getElementById("btn-sync-last-erp");
+    
+    if (btnErp) {
+        if (!ultimoIdFactura) {
+            btnErp.disabled = true;
+        } else {
+            btnErp.disabled = false;
+        }
+    }
+    
     if (!btn) return;
     
     if (!ultimoIdFactura) {
