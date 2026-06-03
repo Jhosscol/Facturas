@@ -108,6 +108,32 @@ async def listar_facturas():
 @app.get("/estadisticas/")
 async def estadisticas():
     return {"estadisticas": obtener_estadisticas()}
+
+@app.get("/facturas/exportar/excel/")
+async def exportar_facturas_excel(ids: str = Query(..., description="IDs de facturas separados por comas")):
+    lista_ids = [int(i.strip()) for i in ids.split(",") if i.strip().isdigit()]
+    if not lista_ids:
+        raise HTTPException(400, "IDs inválidos")
+    
+    db_facturas = [obtener_factura_por_id(id) for id in lista_ids if obtener_factura_por_id(id)]
+    if not db_facturas:
+        raise HTTPException(404, "No se encontraron facturas con los IDs proporcionados")
+    
+    facturas_dicts = [f.to_dict() for f in db_facturas]
+    excel_io, is_xlsx = generar_excel(facturas_dicts)
+    
+    filename = "facturas_exportadas.xlsx" if is_xlsx else "facturas_exportadas.csv"
+    media_type = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" if is_xlsx else "text/csv"
+    
+    headers = {
+        'Content-Disposition': f'attachment; filename="{filename}"'
+    }
+    
+    return StreamingResponse(
+        excel_io,
+        headers=headers,
+        media_type=media_type
+    )
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run("src.api:app", host="127.0.0.1", port=8000, reload=True)

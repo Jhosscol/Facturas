@@ -32,6 +32,7 @@ class FacturaOpenAI(BaseModel):
     fecha_emision: Optional[str] = None
     proveedor_ruc: Optional[str] = None
     proveedor_nombre: Optional[str] = None
+    cliente_nombre: Optional[str] = None
     subtotal: Optional[float] = None
     igv: Optional[float] = None
     total: Optional[float] = None
@@ -58,7 +59,7 @@ REGLAS IMPORTANTES:
 5. Si dice "GRAVADA" o "BASE IMPONIBLE" o "OP. GRAVADA", ese es el subtotal.
 6. La moneda por defecto es "SOLES" a menos que se indique "DÓLARES" o aparezca "$".
 7. Para la fecha, usa el formato tal como aparece en el documento.
-8. Para el nombre del proveedor, busca la razón social (puede terminar en S.A.C., S.R.L., E.I.R.L., S.A.).
+8. Para el nombre del proveedor, busca la razón social (puede terminar en S.A.C., S.R.L., etc.). Extrae también el nombre del cliente o adquiriente si aparece explícitamente y ponlo en cliente_nombre.
 9. Los montos deben ser números decimales (float), no strings.
 10. Si no puedes determinar un campo con confianza, déjalo como null.
 
@@ -132,6 +133,7 @@ PRIORIDAD_CAMPOS = {
     "fecha_emision":    "openai",   # OpenAI maneja formatos variados
     "proveedor_ruc":    "regex",    # Regex \b(20\d{9})\b es preciso
     "proveedor_nombre": "openai",   # OpenAI entiende contexto semántico
+    "cliente_nombre":   "openai",   # OpenAI cruza la semántica entre comprador/vendedor
     "subtotal":         "openai",   # OpenAI no confunde keywords rotos
     "igv":              "openai",   # OpenAI no confunde % con monto
     "total":            "openai",   # OpenAI interpreta mejor el layout
@@ -158,7 +160,7 @@ def _fusionar_resultados(openai_dict: dict | None, regex: dict) -> tuple[dict, s
     campos_regex = 0
 
     for campo in ["numero_factura", "fecha_emision", "proveedor_ruc",
-                   "proveedor_nombre", "subtotal", "igv", "total",
+                   "proveedor_nombre", "cliente_nombre", "subtotal", "igv", "total",
                    "moneda", "simbolo_moneda"]:
 
         val_openai = openai_dict.get(campo)

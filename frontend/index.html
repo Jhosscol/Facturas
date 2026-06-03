@@ -6,7 +6,7 @@
     <title>OCR - Extracción Automática de Facturas</title>
     <!-- Google Fonts -->
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="styles.css?v=2026.06.03">
 </head>
 <body>
     <div class="background-shapes">
@@ -65,7 +65,7 @@
                             </div>
 
                             <div class="action-container" style="margin-top: 1.5rem;">
-                                <button class="btn-secondary" id="btn-add-last" style="width: 100%;" disabled>
+                                <button class="btn-secondary" id="btn-add-last" style="width: 100%;">
                                     Añadir a la lista de exportación
                                 </button>
                             </div>
@@ -81,6 +81,11 @@
                                 Esperando datos...
                             </div>
                             <div class="result-data hidden" id="result-data">
+                                <!-- Visor de la Factura -->
+                                <div class="invoice-preview" id="invoice-preview">
+                                    <img id="preview-img" src="" alt="Vista previa de la factura" class="hidden">
+                                    <embed id="preview-pdf" src="" type="application/pdf" class="hidden">
+                                </div>
                                 <div class="data-group interactive" data-field="proveedor_nombre">
                                     <span>Proveedor:</span>
                                     <strong id="res-nombre">-</strong>
@@ -88,6 +93,10 @@
                                 <div class="data-group interactive" data-field="proveedor_ruc">
                                     <span>RUC:</span>
                                     <strong id="res-ruc">-</strong>
+                                </div>
+                                <div class="data-group interactive" data-field="cliente_nombre">
+                                    <span>Cliente:</span>
+                                    <strong id="res-cliente">-</strong>
                                 </div>
                                 <div class="data-group interactive" data-field="numero_factura">
                                     <span>Serie-Correlativo:</span>
@@ -157,7 +166,7 @@
                         </thead>
                         <tbody id="facturas-tbody">
                             <tr>
-                                <td colspan="8" class="placeholder-text" style="text-align: center; padding: 2rem; font-style: italic;">
+                                <td colspan="9" class="placeholder-text" style="text-align: center; padding: 2rem; font-style: italic;">
                                     No hay facturas procesadas disponibles.
                                 </td>
                             </tr>
@@ -168,6 +177,6 @@
         </main>
     </div>
 
-    <script src="app.js"></script>
+    <script src="app.js?v=2026.06.03"></script>
 </body>
 </html>

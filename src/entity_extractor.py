@@ -209,6 +209,37 @@ def extraer_datos(texto: str) -> dict:
     # ── 5. Nombre del Proveedor (multi-estrategia) ──
     datos["proveedor_nombre"] = _extraer_nombre_proveedor(texto, texto_norm, lineas, nombres_ner)
 
+    # ── 5.1. Nombre del Cliente ──
+    patrones_cliente = [
+        # Con documento o dirección intermedia en líneas siguientes (ej: ADQUIRIENTE\nND: 123\nNombre)
+        r'(?:SE.OR(?:ES)?|CLIENTE|ADQUIR[IE]*NTE|DENOMINACI.?N)[:\-\s]*(?:(?:ND|RUC|DNI|DOC|DIRECCI.N)[:\-\s\d\-]*\n\s*)+([^\n\r]+)',
+        # Con texto en la misma línea y el nombre en la siguiente (ej: FACTURAR A ENVIAR A\nNombre Nombre)
+        r'(?:FACTURAR\s+A|BILL\s+TO|EMITID[OA]\s+A|ADQUIR[IE]*NTE|CLIENTE|SE[NÑ]OR(?:ES)?)[^\n]*\n\s*([^\n\r]+)',
+        # En la misma línea
+        r'(?:SE.OR(?:ES)?|CLIENTE|ADQUIR[IE]*NTE|DENOMINACI.?N|NOMBRES?|RAZ.?N\s+SOCIAL\s+CLIENTE)\s*[:\-]?\s*([^\n\r]+)',
+        r'(?:SE.OR(?:ES)?|CLIENTE|ADQUIR[IE]*NTE|DENOMINACI.?N|NOMBRES?|RAZ.?N\s+SOCIAL\s+CLIENTE|FACTURAR\s+A|BILL\s+TO|EMITID[OA]\s+A)\s*[:\-]?\s*([^\n\r]+)',
+    ]
+    for pat in patrones_cliente:
+        m = re.search(pat, texto, re.IGNORECASE)
+        if m:
+            nombre = m.group(1).strip()
+            # Limpiar
+            nombre = re.sub(r'(?:R\.?U\.?C\.?|FECHA|DIRECCI[OÓ.]N|TELF|TEL[EÉ]FONO|MONEDA|VENCIMIENTO).*$', '', nombre, flags=re.IGNORECASE)
+            nombre = nombre.strip(" -:,*°ºo")
+            
+            # Quitar repeticiones por lectura lineal de columnas paralelas (ej: "Leda Villareal Leda Villareal")
+            nombre_words = nombre.split()
+            if len(nombre_words) % 2 == 0:
+                mid = len(nombre_words) // 2
+                first_half = " ".join(nombre_words[:mid])
+                second_half = " ".join(nombre_words[mid:])
+                if first_half.lower() == second_half.lower():
+                    nombre = first_half
+                    
+            if len(nombre) > 2:
+                datos["cliente_nombre"] = nombre[:100]
+                break
+
     # ══════════════════════════════════════════════════════════════
     #  MONTOS — Enfoque multi-estrategia tolerante a OCR roto
     # ══════════════════════════════════════════════════════════════

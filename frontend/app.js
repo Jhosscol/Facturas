@@ -106,7 +106,7 @@ async function cargarEstadisticas() {
 async function cargarFacturas() {
     const tbody = document.getElementById("facturas-tbody");
     try {
-        const res = await fetch(`${API_BASE}/facturas/`);
+        const res = await fetch(`${API_BASE}/facturas/?_t=${Date.now()}`);
         if (!res.ok) throw new Error("Error obteniendo facturas");
         
         const data = await res.json();
@@ -245,6 +245,27 @@ async function procesarFactura(file) {
         const data = await res.json();
         const f = data.factura;
         currentInvoiceData = f;
+        
+        // Save last invoice id and auto-select it for export
+        ultimoIdFactura = f.id;
+        selectedInvoiceIds.add(f.id);
+
+        // Visualizar Factura en el panel
+        const previewImg = document.getElementById("preview-img");
+        const previewPdf = document.getElementById("preview-pdf");
+        if (file.type === "application/pdf") {
+            if (previewImg) previewImg.classList.add("hidden");
+            if (previewPdf) {
+                previewPdf.classList.remove("hidden");
+                previewPdf.src = URL.createObjectURL(file);
+            }
+        } else {
+            if (previewPdf) previewPdf.classList.add("hidden");
+            if (previewImg) {
+                previewImg.classList.remove("hidden");
+                previewImg.src = URL.createObjectURL(file);
+            }
+        }
 
         // Renderizar Imagen
         facturaImg.src = `${API_BASE}${f.url_imagen}?t=${Date.now()}`;
@@ -257,6 +278,9 @@ async function procesarFactura(file) {
         // Llenar datos
         document.getElementById("res-nombre").innerText = f.proveedor_nombre || "No detectado";
         document.getElementById("res-ruc").innerText = f.proveedor_ruc || "No detectado";
+        if(document.getElementById("res-cliente")) {
+            document.getElementById("res-cliente").innerText = f.cliente_nombre || "No detectado";
+        }
         document.getElementById("res-factura").innerText = f.numero_factura || "No detectado";
         document.getElementById("res-fecha").innerText = f.fecha_emision || "No detectado";
         const sym = f.simbolo_moneda || "S/.";
@@ -290,6 +314,10 @@ async function procesarFactura(file) {
         setTimeout(() => statusMsg.classList.add("hidden"), 2000);
         resultPlaceholder.classList.add("hidden");
         resultData.classList.remove("hidden");
+        
+        // Reset and update the add last invoice button
+        actualizarBotonUltimaFactura();
+        
         cargarEstadisticas();
         cargarFacturas();
 
