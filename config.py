@@ -15,6 +15,7 @@ load_dotenv(os.path.join(os.path.dirname(os.path.abspath(__file__)), ".env"))
 # API Keys
 # ============================================================
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "")
+GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
 
 # ============================================================
 # Rutas del Proyecto
@@ -77,3 +78,16 @@ THRESHOLD_VALUE = 150
 
 # Tamaño del kernel para eliminación de ruido (debe ser impar)
 DENOISE_KERNEL = 3
+
+# ============================================================
+# Detección de Duplicados Semánticos
+# ============================================================
+UMBRAL_SIMILITUD_DUPLICADOS = 0.85
+
+# Comentario para forzar recarga del servidor
+# (recargando para que lea el nuevo .env)
+# Recarga 2
+
+
+
+

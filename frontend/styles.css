@@ -246,9 +246,10 @@ header p {
 }
 
 .action-buttons {
-    margin-top: 1rem;
+    margin-top: 2rem;
     display: flex;
     gap: 1rem;
+    justify-content: center;
 }
 
 .btn-secondary {
@@ -269,22 +270,58 @@ header p {
 
 .interactive {
     cursor: pointer;
-    transition: background 0.2s;
+    transition: all 0.2s;
     border-radius: 8px;
-    padding: 0.75rem !important;
-    margin: 0.25rem 0;
+    padding: 0.75rem 1rem !important;
+    margin: 0.5rem 0;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: rgba(255, 255, 255, 0.02);
+    border: 1px solid rgba(255, 255, 255, 0.03);
+}
+
+.interactive span {
+    color: var(--text-secondary);
+    font-size: 0.9rem;
+}
+
+.interactive strong {
+    font-weight: 600;
+    color: var(--text-primary);
+    text-align: right;
+    max-width: 60%;
+    word-break: break-word;
 }
 
 .interactive:hover {
-    background: rgba(255, 255, 255, 0.05);
+    background: rgba(255, 255, 255, 0.06);
+    border-color: rgba(255, 255, 255, 0.1);
+    transform: translateX(4px);
 }
 
-/* Confidence Bar */
+/* Data Group No Interactivo (Confianza OCR) */
+.data-group:not(.interactive) {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1rem;
+    margin-top: 1rem;
+    background: rgba(0, 0, 0, 0.2);
+    border-radius: 8px;
+    border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.data-group:not(.interactive) span:first-child {
+    color: var(--text-secondary);
+    font-size: 0.9rem;
+}
+
 .conf-bar {
-    width: 60%;
-    height: 8px;
+    width: 50%;
+    height: 10px;
     background: rgba(255, 255, 255, 0.1);
-    border-radius: 4px;
+    border-radius: 99px;
     position: relative;
     display: flex;
     align-items: center;
@@ -292,13 +329,15 @@ header p {
 .conf-fill {
     height: 100%;
     background: linear-gradient(to right, var(--accent), var(--success));
-    border-radius: 4px;
-    transition: width 1s ease-in-out;
+    border-radius: 99px;
+    transition: width 1s cubic-bezier(0.4, 0, 0.2, 1);
 }
 .conf-bar span {
     position: absolute;
-    right: -45px;
-    font-size: 0.8rem;
+    right: -50px;
+    font-weight: 600;
+    color: var(--text-primary);
+    font-size: 0.85rem;
 }
 
 /* Animations */
@@ -380,4 +419,111 @@ header p {
     height: 280px;
     border: none;
     border-radius: 8px;
+}
+
+/* Chat Styles */
+.chat-container {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    height: 400px;
+    background: rgba(0, 0, 0, 0.2);
+    border-radius: 12px;
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    padding: 1rem;
+}
+
+.chat-history {
+    flex-grow: 1;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    padding-right: 0.5rem;
+}
+
+.chat-message {
+    padding: 1rem;
+    border-radius: 12px;
+    max-width: 85%;
+    line-height: 1.5;
+    font-size: 0.95rem;
+}
+
+.bot-message {
+    background: rgba(59, 130, 246, 0.15);
+    border: 1px solid rgba(59, 130, 246, 0.3);
+    align-self: flex-start;
+    border-bottom-left-radius: 4px;
+}
+
+.user-message {
+    background: rgba(16, 185, 129, 0.15);
+    border: 1px solid rgba(16, 185, 129, 0.3);
+    align-self: flex-end;
+    border-bottom-right-radius: 4px;
+}
+
+.chat-input-area {
+    display: flex;
+    gap: 0.5rem;
+}
+
+.chat-input-area .form-control {
+    flex-grow: 1;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid var(--glass-border);
+    color: var(--text-primary);
+    padding: 0.75rem 1rem;
+    border-radius: 8px;
+    outline: none;
+    transition: border-color 0.2s;
+}
+
+.chat-input-area .form-control:focus {
+    border-color: var(--accent);
+}
+
+.btn-primary {
+    background: linear-gradient(135deg, var(--accent), #60a5fa);
+    color: #fff;
+    border: none;
+    padding: 0.75rem 1.5rem;
+    border-radius: 8px;
+    cursor: pointer;
+    font-weight: 600;
+    transition: all 0.2s;
+    box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+}
+.btn-primary:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 16px rgba(59, 130, 246, 0.4);
+}
+
+.alerts-container {
+    margin-top: 1.5rem;
+    padding: 1.25rem;
+    background: rgba(239, 68, 68, 0.1);
+    border: 1px solid rgba(239, 68, 68, 0.3);
+    border-radius: 8px;
+}
+
+.alerts-container h4 {
+    color: #f87171;
+    margin-bottom: 0.75rem;
+    font-size: 0.95rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.alerts-container h4::before {
+    content: "⚠️";
+}
+
+#alerts-list {
+    color: #fecaca;
+    padding-left: 1.5rem;
+    font-size: 0.9rem;
+    line-height: 1.5;
 }

@@ -6,6 +6,7 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, UploadFile, File, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
+from pydantic import BaseModel
 from fastapi.responses import JSONResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 
@@ -19,6 +20,11 @@ from src.openai_extractor import extraer_datos_hybrid
 from src.entity_extractor import vincular_coordenadas
 from src.validator import validar
 from src.exporter import exportar_json, generar_excel
+from src.nl_query import consultar_facturas_nl
+from src.duplicate_detector import verificar_duplicado
+
+class ConsultaRequest(BaseModel):
+    pregunta: str
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -93,6 +99,18 @@ async def procesar_factura_endpoint(archivo: UploadFile = File(...)):
     datos["texto_crudo"] = texto_crudo
     res_val = validar(datos)
     datos.update(res_val)
+    
+    # 5. Detección de duplicados semánticos
+    if "alertas" not in datos:
+        datos["alertas"] = []
+    
+    duplicado_info = verificar_duplicado(texto_crudo, datos.get("proveedor_ruc"))
+    if duplicado_info.get("es_duplicado"):
+        score = duplicado_info.get("score", 0) * 100
+        id_orig = duplicado_info.get("factura_original_id")
+        alerta_msg = f"Posible duplicado semántico ({score:.1f}% de similitud con factura ID {id_orig})"
+        datos["alertas"].append(alerta_msg)
+        
     datos["tiempo_procesamiento_seg"] = round(time.time() - inicio, 2)
 
     exportar_json(datos)
@@ -164,6 +182,14 @@ async def exportar_facturas_excel(ids: str = Query(..., description="IDs de fact
         headers=headers,
         media_type=media_type
     )
+@app.post("/consultar/")
+async def consultar_nl(request: ConsultaRequest):
+    if not request.pregunta or not request.pregunta.strip():
+        raise HTTPException(400, "La pregunta no puede estar vacía")
+    
+    resultado = consultar_facturas_nl(request.pregunta)
+    return resultado
+
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run("src.api:app", host="127.0.0.1", port=8000, reload=True)

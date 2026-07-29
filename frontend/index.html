@@ -176,6 +176,23 @@
                         </tbody>
                     </table>
                 </div>
+            <!-- Panel de Consultas en Lenguaje Natural -->
+            <section class="chat-panel glass fade-in" style="margin-top: 2rem; padding: 2rem;">
+                <div class="section-header">
+                    <h2>Consulta tus Facturas (IA)</h2>
+                    <p>Ejemplo: "¿Cuánto gasté en proveedores de Puno en abril?"</p>
+                </div>
+                <div class="chat-container">
+                    <div id="chat-history" class="chat-history">
+                        <div class="chat-message bot-message">
+                            ¡Hola! Pregúntame cualquier cosa sobre tus facturas.
+                        </div>
+                    </div>
+                    <div class="chat-input-area">
+                        <input type="text" id="chat-input" class="form-control" placeholder="Escribe tu pregunta aquí..." autocomplete="off">
+                        <button id="btn-chat-send" class="btn-primary">Enviar</button>
+                    </div>
+                </div>
             </section>
         </main>
     </div>

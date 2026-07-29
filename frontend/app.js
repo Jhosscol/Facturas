@@ -118,6 +118,7 @@ document.addEventListener("DOMContentLoaded", () => {
         });
     }
 
+    initChat();
 });
 
 async function cargarEstadisticas() {
@@ -418,4 +419,69 @@ function exportarCSV(f) {
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
+}
+
+// Lógica del Chat NL2SQL
+function initChat() {
+    const btnSend = document.getElementById("btn-chat-send");
+    const input = document.getElementById("chat-input");
+    
+    if (!btnSend || !input) return;
+
+    const sendMessage = async () => {
+        const text = input.value.trim();
+        if (!text) return;
+
+        appendChatMessage("user", text);
+        input.value = "";
+        
+        // Typing indicator
+        const typingId = "typing-" + Date.now();
+        appendChatMessage("bot", "...", typingId);
+
+        try {
+            const res = await fetch(`${API_BASE}/consultar/`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ pregunta: text })
+            });
+            const data = await res.json();
+            
+            removeChatMessage(typingId);
+            
+            if (!res.ok) {
+                appendChatMessage("bot", "Ocurrió un error al procesar tu consulta.");
+                return;
+            }
+            
+            appendChatMessage("bot", data.respuesta);
+        } catch (e) {
+            console.error(e);
+            removeChatMessage(typingId);
+            appendChatMessage("bot", "Error de red al conectar con el servidor.");
+        }
+    };
+
+    btnSend.addEventListener("click", sendMessage);
+    input.addEventListener("keypress", (e) => {
+        if (e.key === "Enter") {
+            sendMessage();
+        }
+    });
+}
+
+function appendChatMessage(sender, text, id = null) {
+    const history = document.getElementById("chat-history");
+    const div = document.createElement("div");
+    div.className = `chat-message ${sender}-message`;
+    div.innerText = text;
+    if (id) div.id = id;
+    
+    history.appendChild(div);
+    history.scrollTop = history.scrollHeight;
+}
+
+function removeChatMessage(id) {
+    const el = document.getElementById(id);
+    if (el) el.remove();
 }

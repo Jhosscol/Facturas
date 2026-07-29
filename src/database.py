@@ -63,9 +63,24 @@ def inicializar_db():
     try:
         cursor = db.execute(text("PRAGMA table_info(facturas)"))
         columnas = [row[1] for row in cursor.fetchall()]
-        if "cliente_nombre" not in columnas:
-            db.execute(text("ALTER TABLE facturas ADD COLUMN cliente_nombre VARCHAR"))
-            db.commit()
+        
+        # Definir las columnas que podrían faltar en bases de datos antiguas
+        columnas_esperadas = {
+            "cliente_nombre": "VARCHAR",
+            "moneda": "VARCHAR DEFAULT 'SOLES'",
+            "simbolo_moneda": "VARCHAR DEFAULT 'S/.'",
+            "url_imagen": "VARCHAR",
+            "coordenadas_json": "TEXT",
+            "texto_crudo": "TEXT",
+            "metodo_extraccion": "VARCHAR DEFAULT 'regex'",
+            "tiempo_procesamiento_seg": "FLOAT"
+        }
+        
+        for col, tipo in columnas_esperadas.items():
+            if col not in columnas:
+                db.execute(text(f"ALTER TABLE facturas ADD COLUMN {col} {tipo}"))
+                
+        db.commit()
     except Exception as e:
         db.rollback()
         print("[DB MIGRATION ERROR]", e)
